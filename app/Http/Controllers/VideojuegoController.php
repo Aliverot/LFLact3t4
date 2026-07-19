@@ -3,68 +3,93 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Videojuego; // Importamos el modelo
+use App\Models\Videojuego;
+use App\Models\Plataforma; // IMPORTANTE: Importamos el modelo Plataforma
+use App\Http\Requests\StoreVideojuegoRequest;
+use App\Http\Requests\UpdateVideojuegoRequest;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\VideojuegoCreateMail;
 
 class VideojuegoController extends Controller
 {
-    // 1. Mostrar listado
     public function index()
     {
-        // Cambiamos get() por paginate(5) para fragmentar la vista
         $videojuegos = Videojuego::orderBy('id', 'desc')->paginate(5);
         return view('videojuegos.index', compact('videojuegos'));
     }
 
-    // 2. Mostrar formulario de creación
     public function create()
     {
-        return view('videojuegos.create');
+        // Rescatamos todas las plataformas de la BD para mostrarlas en los checkboxes
+        $plataformas = Plataforma::all();
+        return view('videojuegos.create', compact('plataformas'));
     }
 
-    // 3. Guardar el nuevo registro
-    public function store(Request $request)
+    public function store(StoreVideojuegoRequest $request)
     {
-        $juego = new Videojuego();
-        $juego->titulo = $request->titulo;
-        $juego->desarrollador = $request->desarrollador;
-        $juego->descripcion = $request->descripcion;
-        $juego->save();
+        // 1. Creamos el videojuego principal
+        $juego = Videojuego::create($request->all());
+
+        // 2. Asociamos las plataformas usando attach()
+        if ($request->has('plataformas')) {
+            $juego->plataformas()->attach($request->plataformas);
+        }
+
+        // 3. Relación 1 a 1: Creamos el Detalle si llenaron los campos
+        if ($request->filled('motor_grafico') && $request->filled('peso_gb')) {
+            $juego->detalle()->create([
+                'motor_grafico' => $request->motor_grafico,
+                'peso_gb' => $request->peso_gb
+            ]);
+        }
+
+        // 4. Enviamos el correo
+        Mail::to('admin@tujuego.com')->send(new VideojuegoCreateMail($juego));
 
         return redirect()->route('videojuegos.index');
     }
-
-    // 4. Mostrar detalle de un registro
-    public function show($id)
+    
+    public function show(Videojuego $videojuego)
     {
-        $videojuego = Videojuego::find($id);
         return view('videojuegos.show', compact('videojuego'));
     }
 
-    // 5. Mostrar formulario de edición
-    public function edit($id)
+    public function edit(Videojuego $videojuego)
     {
-        $videojuego = Videojuego::find($id);
-        return view('videojuegos.edit', compact('videojuego'));
+        // Mandamos el juego y TODAS las plataformas disponibles
+        $plataformas = Plataforma::all();
+        return view('videojuegos.edit', compact('videojuego', 'plataformas'));
     }
 
-    // 6. Actualizar el registro
-    public function update(Request $request, $id)
+    public function update(UpdateVideojuegoRequest $request, Videojuego $videojuego)
     {
-        $juego = Videojuego::find($id);
-        $juego->titulo = $request->titulo;
-        $juego->desarrollador = $request->desarrollador;
-        $juego->descripcion = $request->descripcion;
-        $juego->save();
+        // 1. Actualizamos los datos principales
+        $videojuego->update($request->all());
 
-        return redirect()->route('videojuegos.show', $juego);
+        // 2. Relación Muchos a Muchos: Actualizamos plataformas
+        if ($request->has('plataformas')) {
+            $videojuego->plataformas()->sync($request->plataformas);
+        } else {
+            $videojuego->plataformas()->detach();
+        }
+
+        // 3. Relación 1 a 1: Actualizamos o creamos el Detalle
+        if ($request->filled('motor_grafico') && $request->filled('peso_gb')) {
+            $videojuego->detalle()->updateOrCreate(
+                ['videojuego_id' => $videojuego->id], // Condición de búsqueda
+                [
+                    'motor_grafico' => $request->motor_grafico,
+                    'peso_gb' => $request->peso_gb
+                ]
+            );
+        }
+
+        return redirect()->route('videojuegos.show', $videojuego);
     }
 
-    // 7. Eliminar el registro
-    public function destroy($id)
+    public function destroy(Videojuego $videojuego)
     {
-        $juego = Videojuego::find($id);
-        $juego->delete();
-
+        $videojuego->delete();
         return redirect()->route('videojuegos.index');
     }
 }

@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::table('videojuegos', function (Blueprint $table) {
             $table->string('desarrollador')->nullable()->after('titulo');
             
-            // 1. Añadimos el campo timestamp
-            $table->timestamp('published_at')->nullable();
+            // Añadimos el slug como campo único después del título
+            $table->string('slug')->unique()->after('titulo'); 
             
-            // 2. Añadimos el campo boolean (MySQL lo creará como tinyint)
+            $table->timestamp('published_at')->nullable();
             $table->boolean('is_active')->default(true);
         });
     }
@@ -23,8 +23,9 @@ return new class extends Migration
     {
         Schema::table('videojuegos', function (Blueprint $table) {
             $table->dropColumn('desarrollador');
+            $table->dropColumn('slug'); // No olvides agregarlo al rollback
             $table->dropColumn('published_at');
             $table->dropColumn('is_active');
         });
-    }
+    }   
 };
