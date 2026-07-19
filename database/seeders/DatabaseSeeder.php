@@ -2,24 +2,19 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Videojuego; // Importamos el modelo
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // 1. Llamamos al seeder de usuarios (que crea el admin y 10 fakes)
+        $this->call([
+            UserSeeder::class,
         ]);
+
+        // 2. Ejecutamos el factory directamente aquí, creando 20 videojuegos
+        Videojuego::factory(20)->create();
     }
 }

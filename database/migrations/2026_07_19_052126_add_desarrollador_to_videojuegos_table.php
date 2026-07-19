@@ -8,20 +8,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Schema::table modifica una tabla que ya existe
         Schema::table('videojuegos', function (Blueprint $table) {
-            // Agregamos la columna 'desarrollador'
-            // Usamos nullable() para que no de error con los registros viejos
-            // Usamos after() para ubicarla justo después del título
             $table->string('desarrollador')->nullable()->after('titulo');
+            
+            // 1. Añadimos el campo timestamp
+            $table->timestamp('published_at')->nullable();
+            
+            // 2. Añadimos el campo boolean (MySQL lo creará como tinyint)
+            $table->boolean('is_active')->default(true);
         });
     }
 
     public function down(): void
     {
-        // El rollback de esta migración específica es solo borrar la columna, no la tabla entera
         Schema::table('videojuegos', function (Blueprint $table) {
             $table->dropColumn('desarrollador');
+            $table->dropColumn('published_at');
+            $table->dropColumn('is_active');
         });
     }
 };
